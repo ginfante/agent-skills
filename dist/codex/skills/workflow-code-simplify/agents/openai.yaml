@@ -1,0 +1,5 @@
+interface:
+  display_name: "workflow-code-simplify"
+  short_description: "Runs the code-simplify workflow in Codex. Use when the user expl"
+policy:
+  allow_implicit_invocation: false

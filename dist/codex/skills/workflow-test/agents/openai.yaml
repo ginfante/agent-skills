@@ -1,0 +1,5 @@
+interface:
+  display_name: "workflow-test"
+  short_description: "Runs the test workflow in Codex. Use when the user explicitly se"
+policy:
+  allow_implicit_invocation: false

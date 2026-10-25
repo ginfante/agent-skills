@@ -1,0 +1,5 @@
+interface:
+  display_name: "workflow-ship"
+  short_description: "Runs the ship workflow in Codex. Use when the user explicitly se"
+policy:
+  allow_implicit_invocation: false

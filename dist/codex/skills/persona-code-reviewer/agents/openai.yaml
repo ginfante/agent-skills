@@ -1,0 +1,5 @@
+interface:
+  display_name: "persona-code-reviewer"
+  short_description: "Runs the code-reviewer specialist persona in Codex. Use when the"
+policy:
+  allow_implicit_invocation: false

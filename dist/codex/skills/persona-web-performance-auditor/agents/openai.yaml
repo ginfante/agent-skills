@@ -1,0 +1,5 @@
+interface:
+  display_name: "persona-web-performance-auditor"
+  short_description: "Runs the web-performance-auditor specialist persona in Codex. Us"
+policy:
+  allow_implicit_invocation: false

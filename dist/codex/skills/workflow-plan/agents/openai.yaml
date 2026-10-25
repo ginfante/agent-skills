@@ -1,0 +1,5 @@
+interface:
+  display_name: "workflow-plan"
+  short_description: "Runs the plan workflow in Codex. Use when the user explicitly se"
+policy:
+  allow_implicit_invocation: false

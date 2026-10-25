@@ -1,0 +1,5 @@
+interface:
+  display_name: "persona-test-engineer"
+  short_description: "Runs the test-engineer specialist persona in Codex. Use when the"
+policy:
+  allow_implicit_invocation: false
