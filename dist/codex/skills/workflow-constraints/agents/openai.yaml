@@ -1,0 +1,5 @@
+interface:
+  display_name: "workflow-constraints"
+  short_description: "Runs the constraints workflow in Codex. Use when the user explic"
+policy:
+  allow_implicit_invocation: false

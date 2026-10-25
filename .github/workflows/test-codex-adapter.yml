@@ -1,0 +1,28 @@
+name: Test Codex adaptation
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  codex-adapter:
+    name: Codex adapter (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Test generator, instruction contracts and validation
+        run: node --test scripts/build-codex-test.js scripts/validate-codex-test.js scripts/codex-workflows-test.js
+      - name: Validate committed distribution against source
+        run: node scripts/validate-codex.js
+      - name: Install pinned skills CLI in temporary directory
+        shell: bash
+        run: npm install --prefix "$RUNNER_TEMP/skills-cli" --no-package-lock --ignore-scripts skills@1.7.4
+      - name: Smoke-test native copy, default, selective and linked installs
+        shell: bash
+        run: node scripts/smoke-codex-install.js --cli "$RUNNER_TEMP/skills-cli/node_modules/skills/bin/cli.mjs"

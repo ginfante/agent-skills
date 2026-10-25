@@ -8,3 +8,11 @@ node_modules/
 evals/results/
 evals/plugin/results/
 __pycache__/
+
+# Publish native skills CLI artifacts even when dist/ is ignored globally.
+!dist/
+!dist/codex/
+!dist/codex/**
+
+# Optional local plugin output
+/build/

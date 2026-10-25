@@ -1,0 +1,5 @@
+interface:
+  display_name: "persona-security-auditor"
+  short_description: "Runs the security-auditor specialist persona in Codex. Use when "
+policy:
+  allow_implicit_invocation: false

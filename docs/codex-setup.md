@@ -1,3 +1,5 @@
+> **Fork adaptation:** This fork also provides all lifecycle workflows and personas through native `npx skills add`. See [the full Codex adapter guide](../adapters/codex/README.md). Use the generated `dist/codex` source for the complete adapted pack; the upstream plugin installation below exposes the original skills only.
+
 # Using agent-skills with Codex
 
 This repository is also a [Codex plugin](https://developers.openai.com/codex/plugins/build). The same root-level `skills/` directory used by Claude Code is consumed by Codex, so no files are copied or duplicated.

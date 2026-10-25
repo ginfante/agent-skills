@@ -1,0 +1,128 @@
+{
+  "name": "ginfante-agent-skills-codex",
+  "version": "0.1.0",
+  "repository": "https://github.com/ginfante/agent-skills",
+  "upstreamCommit": "aeac41d4d005999432bb7312f7ff06383a91d59d",
+  "workflows": {
+    "spec": {
+      "source": ".claude/commands/spec.md",
+      "skills": [
+        "spec-driven-development"
+      ]
+    },
+    "plan": {
+      "source": ".claude/commands/plan.md",
+      "skills": [
+        "planning-and-task-breakdown"
+      ]
+    },
+    "build": {
+      "source": ".claude/commands/build.md",
+      "skills": [
+        "incremental-implementation",
+        "test-driven-development",
+        "planning-and-task-breakdown",
+        "debugging-and-error-recovery",
+        "doubt-driven-development"
+      ]
+    },
+    "test": {
+      "source": ".claude/commands/test.md",
+      "skills": [
+        "test-driven-development",
+        "browser-testing-with-devtools"
+      ]
+    },
+    "constraints": {
+      "source": ".claude/commands/constraints.md",
+      "skills": [
+        "constraint-driven-development"
+      ]
+    },
+    "review": {
+      "source": ".claude/commands/review.md",
+      "skills": [
+        "code-review-and-quality",
+        "security-and-hardening",
+        "performance-optimization"
+      ]
+    },
+    "code-simplify": {
+      "source": ".claude/commands/code-simplify.md",
+      "skills": [
+        "code-simplification",
+        "code-review-and-quality"
+      ]
+    },
+    "webperf": {
+      "source": ".claude/commands/webperf.md",
+      "skills": [
+        "performance-optimization",
+        "browser-testing-with-devtools"
+      ]
+    },
+    "ship": {
+      "source": ".claude/commands/ship.md",
+      "skills": [
+        "shipping-and-launch",
+        "code-review-and-quality",
+        "security-and-hardening",
+        "test-driven-development",
+        "performance-optimization"
+      ],
+      "override": "adapters/codex/workflows/ship.md"
+    }
+  },
+  "personas": {
+    "code-reviewer": {
+      "source": "agents/code-reviewer.md",
+      "skills": [
+        "code-review-and-quality",
+        "security-and-hardening",
+        "performance-optimization"
+      ]
+    },
+    "security-auditor": {
+      "source": "agents/security-auditor.md",
+      "skills": [
+        "security-and-hardening"
+      ]
+    },
+    "test-engineer": {
+      "source": "agents/test-engineer.md",
+      "skills": [
+        "test-driven-development"
+      ]
+    },
+    "web-performance-auditor": {
+      "source": "agents/web-performance-auditor.md",
+      "skills": [
+        "performance-optimization",
+        "browser-testing-with-devtools"
+      ]
+    }
+  },
+  "reviewedSources": {
+    ".claude/commands/spec.md": "82325b4cc75ae2413c7bf4b6f84804eb662935d9df98edab50eef2b39ff904b0",
+    ".claude/commands/plan.md": "91d961b2a7011209bc6771c176932e72e11b99d0c524e3f63c9f2e2a94fbc993",
+    ".claude/commands/build.md": "74cc85b5092f8e209bcda36441a4ce17a5cd9efd2a7d8ce76ba202816088e277",
+    ".claude/commands/test.md": "62f72b64cfac6db984db072fdc987a23e6049876191297da5f37367def986ff2",
+    ".claude/commands/constraints.md": "f6d8fdf69be74059db907cf474149eae336b6fbfbcbfb791546e321085612171",
+    ".claude/commands/review.md": "fac1e89ece153275ee8e9d89141d2bd56d9d1aaf0bf1d487bf129b7fbf1dc3e9",
+    ".claude/commands/code-simplify.md": "71e9e8d38c5cbab5b7ecff324ed4ea0f1aaa4fd053ea6c2b717f2fbadfb65a91",
+    ".claude/commands/webperf.md": "74c0c1335f1397a5138a78eda4275e4e5deba16c4537f3a4b4971c3280d0ba27",
+    ".claude/commands/ship.md": "2d42cf82d17a0097a0143d8181f9686480388204838688e45b08c591f3042fbc",
+    "agents/code-reviewer.md": "4efbd53e08e57291cc2869865be809897fbe598767600118ec687d00a557fff4",
+    "agents/security-auditor.md": "66a3f68f1c691b600ddb44e88afb138e239d0572df37be84e1f9a427c887dd0a",
+    "agents/test-engineer.md": "a7a0b33ec3294da8fb4ee02ed28c665056bafa48982930fe551dcfadda9117af",
+    "agents/web-performance-auditor.md": "0928b1cf8103262a364bce0c1fc689a918852e2275441f1b2e687adfa1e607e9",
+    "references/orchestration-patterns.md": "61e543d86f19f86b83074f8c1c769455c7085a2c72dd47b1da21a8c63785be4a",
+    "docs/agents.md": "ac1d7704dcd70b9e98e8109254ece554381c7c488e54471ff17a648e5bcb13d2",
+    "skills/browser-testing-with-devtools/SKILL.md": "4e3aacd6a380cd25bc6c2d67fdd1c926a9b22535b8a62109ecd33cefd909e3d9",
+    "skills/doubt-driven-development/SKILL.md": "6fa1fcd8420c28daf7e53c5b08b0f20b907911efd2a6d9bce0b9740da20a4008"
+  },
+  "resourceOverrides": {
+    "references/orchestration-patterns.md": "adapters/codex/references/orchestration-patterns.md",
+    "docs/agents.md": "adapters/codex/references/personas.md"
+  }
+}

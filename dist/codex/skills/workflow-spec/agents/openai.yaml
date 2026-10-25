@@ -1,0 +1,5 @@
+interface:
+  display_name: "workflow-spec"
+  short_description: "Runs the spec workflow in Codex. Use when the user explicitly se"
+policy:
+  allow_implicit_invocation: false
