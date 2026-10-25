@@ -54,17 +54,34 @@ function checkSources(root, manifest) {
   }
 }
 function translate(text) {
-  return text.replace(/skills\/([a-z][a-z-]+)(?:\/SKILL\.md)?/g, '`$1` (use its bundled workflow when not installed)')
-    .replace(/\$ARGUMENTS/g, 'the arguments supplied by the user with this workflow')
+  return text.replace(/\$ARGUMENTS/g, 'the arguments supplied by the user with this workflow')
     .replace(/agent-skills:([a-z][a-z-]+)/g, '`$1`')
-    .replace(/\/constraints (check|guard|ratchet)/g, 'workflow-constraints $1')
-    .replace(/\/build(?: auto)?/g, value => value.includes('auto') ? 'workflow-build auto' : 'workflow-build')
-    .replace(/\/(spec|plan|test|review|ship|webperf|code-simplify)\b/g, 'workflow-$1');
+    .replace(/(?<![\w./:-])\/(constraints|build|spec|plan|test|review|ship|webperf|code-simplify)(?![\w./-])/g, 'workflow-$1');
+}
+function realLocation(file) {
+  const suffix = [];
+  let existing = file;
+  while (!fs.existsSync(existing)) {
+    suffix.unshift(path.basename(existing));
+    existing = path.dirname(existing);
+  }
+  return path.resolve(fs.realpathSync(existing), ...suffix);
+}
+function publish(stage, output) {
+  const backup = `${stage}-previous`;
+  const existed = fs.existsSync(output);
+  if (existed) fs.renameSync(output, backup);
+  try { fs.renameSync(stage, output); }
+  catch (error) {
+    if (existed) fs.renameSync(backup, output);
+    throw error;
+  }
+  if (existed) fs.rmSync(backup, { recursive: true, force: true });
 }
 
 // Resources are local to each installable skill. A resource's source location is
 // tracked separately from its destination so nested references retain meaning.
-function bundle(root, target) {
+function bundle(root, target, manifest) {
   const destinations = new Map();
   function add(source, relative, transform = value => value) {
     const key = path.resolve(root, source);
@@ -78,6 +95,14 @@ function bundle(root, target) {
       return relative;
     }
     let text = transform(read(file));
+    // Turn repository-only workflow paths into bundled dependencies, including
+    // transitive references. Source identity caching terminates cycles.
+    text = text.replace(/(?<![\w./-])skills\/([a-z][a-z-]+)(?:\/SKILL\.md)?(?![\w/-])/g, (match, name) => {
+      const source = path.join(root, 'skills', name, 'SKILL.md');
+      if (!fs.existsSync(source)) throw new Error(`Unknown workflow reference: ${name}`);
+      const local = skill(name, `references/workflows/${name}`);
+      return posix(path.relative(path.dirname(destination), path.join(target, local)));
+    });
     // Convert real shared references, including bare backtick paths. Example
     // project paths inside code fences are not treated as resource links.
     text = text.replace(/(?<![\w./-])((?:\.\.\/)*references\/[\w./-]+\.md)(#[\w-]+)?/g, (match, link, anchor = '') => {
@@ -91,8 +116,9 @@ function bundle(root, target) {
       }
       if (inside(path.join(root, 'references'), resolved)) {
         const name = path.basename(resolved);
-        const src = name === 'orchestration-patterns.md' ? 'adapters/codex/references/orchestration-patterns.md' : posix(path.relative(root, resolved));
-        const local = `references/shared/${name}`;
+        const canonical = posix(path.relative(root, resolved));
+        const src = manifest.resourceOverrides[canonical] || canonical;
+        const local = `references/shared/${posix(path.relative(path.join(root, 'references'), resolved))}`;
         // Mark both canonical and adapted paths to resolve repeated references.
         add(src, local);
         destinations.set(resolved, local);
@@ -103,7 +129,7 @@ function bundle(root, target) {
       throw new Error(`Unmapped resource ${link} in ${source}`);
     });
     text = text.replace(/\]\((?:\.\.\/)?docs\/agents\.md\)/g, () => {
-      const local = add('adapters/codex/references/personas.md', 'references/personas.md');
+      const local = add(manifest.resourceOverrides['docs/agents.md'], 'references/personas.md');
       return `](${posix(path.relative(path.dirname(destination), path.join(target, local)))})`;
     });
     write(destination, text);
@@ -111,31 +137,52 @@ function bundle(root, target) {
   }
   function skill(name, destination = '') {
     const sourceDir = path.join(root, 'skills', name);
+    const main = path.join(sourceDir, 'SKILL.md');
+    if (destinations.has(main)) return destinations.get(main);
     if (!fs.existsSync(sourceDir)) throw new Error(`Unknown required skill: ${name}`);
-    for (const file of files(sourceDir)) {
+    const ordered = files(sourceDir).sort((a, b) => (a === main ? -1 : b === main ? 1 : a.localeCompare(b, 'en')));
+    for (const file of ordered) {
       const rel = posix(path.relative(sourceDir, file));
       const dest = path.posix.join(destination, rel === 'SKILL.md' && destination ? 'SKILL.txt' : rel);
       add(posix(path.relative(root, file)), dest, text => {
         if (name === 'idea-refine') text = text.replace('bash skills/idea-refine/scripts/idea-refine.sh', 'bash <installed-skill-directory>/scripts/idea-refine.sh');
+        if (name === 'browser-testing-with-devtools') {
+          text = text.replace(/Add the following to your project's `\.mcp\.json` or Claude Code settings:[\s\S]*?```json[\s\S]*?```/, 'Use browser inspection tools already exposed by the Codex host. If Chrome DevTools MCP is unavailable, disclose the missing capability. Configure it separately through the host’s MCP settings using the current official Codex documentation. This skill does not install or register a server. The server launch command is:\n\n```bash\nnpx -y chrome-devtools-mcp@latest --isolated\n```');
+        }
         if (name === 'doubt-driven-development') {
+          text = text.replace('(where Claude Code prevents nested subagent spawn)', '(when nested delegation is unavailable or disallowed by this host)');
           text = text.replace('In Claude Code, the role-based reviewers in `agents/` start with isolated context by design and are usable here — see `agents/` for the roster and per-domain match.', 'In Codex, only actual native subagent delegation provides isolated context. Direct persona skill invocation stays in the current chat. Ask the main session to delegate an appropriate specialist when available; disclose unavailable fresh-context review.');
         }
-        return text;
+        return text.replace(/\$ARGUMENTS/g, 'the idea or arguments supplied by the user');
       });
     }
+    return destinations.get(main);
   }
   return { add, skill };
 }
 function build({ root = DEFAULT_ROOT, output = path.join(root, 'dist/codex') } = {}) {
-  root = path.resolve(root); output = path.resolve(output);
-  const manifest = JSON.parse(read(path.join(root, 'adapters/codex/manifest.json')));
+  root = fs.realpathSync(path.resolve(root)); output = realLocation(path.resolve(output));
+  const manifest = JSON.parse(read(checkedFile(root, 'adapters/codex/manifest.json')));
   checkSources(root, manifest);
+  const license = fs.readFileSync(checkedFile(root, 'LICENSE'));
+  for (const [source, expected] of Object.entries(manifest.reviewedSources)) {
+    if (digest(fs.readFileSync(checkedFile(root, source))) !== expected) throw new Error(`Source review required: ${source}`);
+  }
+  for (const [source, override] of Object.entries(manifest.resourceOverrides || {})) {
+    if (digest(fs.readFileSync(checkedFile(root, source))) !== manifest.reviewedSources[source]) throw new Error(`Resource source review required: ${source}`);
+    checkedFile(root, override);
+  }
   if (!/^[a-z][a-z0-9-]+$/.test(manifest.name) || !/^\d+\.\d+\.\d+$/.test(manifest.version)) throw new Error('Invalid adapter identity/version');
   const original = fs.readdirSync(path.join(root, 'skills')).filter(name => fs.existsSync(path.join(root, 'skills', name, 'SKILL.md'))).sort();
   const names = [...original, ...Object.keys(manifest.workflows).map(name => `workflow-${name}`), ...Object.keys(manifest.personas).map(name => `persona-${name}`)];
   if (new Set(names).size !== names.length) throw new Error('Duplicate generated skill names');
-  if (output === root || inside(output, root) || ['skills', 'agents', 'adapters', '.claude', 'scripts'].some(dir => inside(path.join(root, dir), output))) throw new Error('Unsafe output directory');
-  if (fs.existsSync(output) && fs.readdirSync(output).length && !fs.existsSync(path.join(output, '_codex-build.json'))) throw new Error('Refusing to replace an unmanaged output directory');
+  if (inside(output, root) || (inside(root, output) && output !== path.join(root, 'dist/codex'))) throw new Error('Unsafe output directory or symlink alias');
+  if (fs.existsSync(output) && fs.readdirSync(output).length) {
+    const marker = path.join(output, '_codex-build.json');
+    let ownership;
+    try { ownership = JSON.parse(read(marker)); } catch { /* rejected below */ }
+    if (!ownership || ownership.name !== manifest.name || !Array.isArray(ownership.skills)) throw new Error('Refusing to replace an unmanaged output directory');
+  }
   // Build in a sibling temporary directory. Failed generation preserves the last
   // good distribution. No Git metadata, credentials or global state is copied.
   fs.mkdirSync(path.dirname(output), { recursive: true });
@@ -145,15 +192,15 @@ function build({ root = DEFAULT_ROOT, output = path.join(root, 'dist/codex') } =
       const meta = frontmatter(read(path.join(root, 'skills', name, 'SKILL.md')), name);
       if (!/^[a-z][a-z0-9-]*$/.test(name) || meta.name !== name || !meta.description) throw new Error(`Invalid skill frontmatter: ${name}`);
       const target = path.join(stage, 'skills', name);
-      bundle(root, target).skill(name);
-      write(path.join(target, 'LICENSE'), read(path.join(root, 'LICENSE')));
+      bundle(root, target, manifest).skill(name);
+      write(path.join(target, 'LICENSE'), license);
     }
     for (const category of ['workflows', 'personas']) {
       for (const [name, entry] of Object.entries(manifest[category])) {
         const generatedName = `${category === 'workflows' ? 'workflow' : 'persona'}-${name}`;
         if (!/^[a-z][a-z0-9-]*$/.test(generatedName)) throw new Error(`Invalid generated name: ${generatedName}`);
         const target = path.join(stage, 'skills', generatedName);
-        const resources = bundle(root, target);
+        const resources = bundle(root, target, manifest);
         const source = frontmatter(read(path.join(root, entry.source)), entry.source);
         if (!source.description) throw new Error(`Invalid source description: ${entry.source}`);
         let body = translate(entry.override ? read(path.join(root, entry.override)) : source.body);
@@ -178,21 +225,20 @@ function build({ root = DEFAULT_ROOT, output = path.join(root, 'dist/codex') } =
         // Run the wrapper through the same resource rewriting as canonical files.
         resources.add(entry.override || entry.source, 'SKILL.md', () => prelude + body);
         write(path.join(target, 'agents/openai.yaml'), `interface:\n  display_name: ${JSON.stringify(generatedName)}\n  short_description: ${JSON.stringify(description.slice(0, 64))}\npolicy:\n  allow_implicit_invocation: false\n`);
-        write(path.join(target, 'LICENSE'), read(path.join(root, 'LICENSE')));
+        write(path.join(target, 'LICENSE'), license);
       }
     }
     const sourceDigests = {};
     for (const source of ['scripts/build-codex.js', 'LICENSE']) {
-      if (fs.existsSync(path.join(root, source))) sourceDigests[source] = digest(fs.readFileSync(path.join(root, source)));
+      if (fs.existsSync(path.join(root, source))) sourceDigests[source] = digest(fs.readFileSync(checkedFile(root, source)));
     }
     for (const dir of ['skills', 'agents', 'references', 'adapters/codex', '.claude/commands']) {
-      for (const file of files(path.join(root, dir))) sourceDigests[posix(path.relative(root, file))] = digest(fs.readFileSync(file));
+      for (const file of files(path.join(root, dir))) sourceDigests[posix(path.relative(root, file))] = digest(fs.readFileSync(checkedFile(root, posix(path.relative(root, file)))));
     }
     write(path.join(stage, '_codex-build.json'), JSON.stringify({ name: manifest.name, version: manifest.version, upstreamCommit: manifest.upstreamCommit, skills: names.sort(), sourceDigests }, null, 2) + '\n');
-    write(path.join(stage, 'LICENSE'), read(path.join(root, 'LICENSE')));
+    write(path.join(stage, 'LICENSE'), license);
     write(path.join(stage, 'README.md'), `# ${manifest.name}\n\nGenerated from canonical sources. Do not edit this directory directly.\n\nBuild: node scripts/build-codex.js\nValidate: node scripts/validate-codex.js\nVersion: ${manifest.version}\nUpstream baseline: ${manifest.upstreamCommit}\n\nInstall with npx skills add <this-directory> -a codex --skill '*'.\n`);
-    fs.rmSync(output, { recursive: true, force: true });
-    fs.renameSync(stage, output);
+    publish(stage, output);
   } catch (error) {
     fs.rmSync(stage, { recursive: true, force: true });
     throw error;

@@ -26,6 +26,8 @@ function validate({ root = ROOT, output = path.join(root, 'dist/codex') } = {}) 
       if (meta.name !== name || !meta.description || meta.description.length > 1024) throw new Error(`Invalid metadata: ${name}`);
       for (const file of files(directory).filter(file => /\.(md|txt)$/.test(file))) {
         const text = stripFencedCodeBlocks(fs.readFileSync(file, 'utf8'));
+        if (/\$ARGUMENTS|agent-skills:|subagent_type|Agent tool/.test(text)) throw new Error(`Untranslated host instruction in ${file}`);
+        if (/(?<![\w./-])skills\/[a-z-]+\/SKILL\.md/.test(text)) throw new Error(`Repository-only workflow reference in ${file}`);
         for (const [, link] of text.matchAll(/\]\(([^\s)]+)\)/g)) {
           if (/^(?:[a-z]+:|#)/i.test(link)) continue;
           const target = path.resolve(path.dirname(file), link.split('#')[0]);

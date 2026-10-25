@@ -115,6 +115,14 @@
     "agents/code-reviewer.md": "4efbd53e08e57291cc2869865be809897fbe598767600118ec687d00a557fff4",
     "agents/security-auditor.md": "66a3f68f1c691b600ddb44e88afb138e239d0572df37be84e1f9a427c887dd0a",
     "agents/test-engineer.md": "a7a0b33ec3294da8fb4ee02ed28c665056bafa48982930fe551dcfadda9117af",
-    "agents/web-performance-auditor.md": "0928b1cf8103262a364bce0c1fc689a918852e2275441f1b2e687adfa1e607e9"
+    "agents/web-performance-auditor.md": "0928b1cf8103262a364bce0c1fc689a918852e2275441f1b2e687adfa1e607e9",
+    "references/orchestration-patterns.md": "61e543d86f19f86b83074f8c1c769455c7085a2c72dd47b1da21a8c63785be4a",
+    "docs/agents.md": "ac1d7704dcd70b9e98e8109254ece554381c7c488e54471ff17a648e5bcb13d2",
+    "skills/browser-testing-with-devtools/SKILL.md": "4e3aacd6a380cd25bc6c2d67fdd1c926a9b22535b8a62109ecd33cefd909e3d9",
+    "skills/doubt-driven-development/SKILL.md": "6fa1fcd8420c28daf7e53c5b08b0f20b907911efd2a6d9bce0b9740da20a4008"
+  },
+  "resourceOverrides": {
+    "references/orchestration-patterns.md": "adapters/codex/references/orchestration-patterns.md",
+    "docs/agents.md": "adapters/codex/references/personas.md"
   }
 }

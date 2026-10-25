@@ -80,11 +80,65 @@ test('failed generation preserves the preceding valid distribution', t => {
   build({ root, output });
   const before = tree(output);
   const fixture = temporary(t);
-  for (const dir of ['adapters', '.claude/commands', 'agents', 'skills', 'references']) {
+  for (const dir of ['adapters', '.claude/commands', 'agents', 'skills', 'references', 'docs/agents.md']) {
     fs.cpSync(path.join(root, dir), path.join(fixture, dir), { recursive: true });
   }
   fs.copyFileSync(path.join(root, 'LICENSE'), path.join(fixture, 'LICENSE'));
   fs.writeFileSync(path.join(fixture, 'skills/interview-me/SKILL.md'), 'bad frontmatter');
   assert.throws(() => build({ root: fixture, output }), /frontmatter/);
+  assert.deepEqual(tree(output), before);
+});
+function sourceFixture(t) {
+  const fixture = temporary(t);
+  for (const entry of ['adapters', '.claude/commands', 'agents', 'skills', 'references', 'docs/agents.md', 'LICENSE']) {
+    fs.cpSync(path.join(root, entry), path.join(fixture, entry), { recursive: true });
+  }
+  return fixture;
+}
+test('command translation leaves repository paths and URLs intact', () => {
+  const { translate } = require('./build-codex');
+  assert.equal(translate('Read tasks/plan.md and docs/spec/guide.md at https://example.com/spec/guide'), 'Read tasks/plan.md and docs/spec/guide.md at https://example.com/spec/guide');
+  assert.equal(translate('Run `/plan`, `/build auto`, then `/constraints check`.'), 'Run `workflow-plan`, `workflow-build auto`, then `workflow-constraints check`.');
+});
+test('selectively installed specification carries its downstream workflow references', t => {
+  const output = temporary(t);
+  build({ root, output });
+  const target = path.join(output, 'skills/workflow-spec/references/workflows/spec-driven-development/SKILL.txt');
+  const text = fs.readFileSync(target, 'utf8');
+  assert.doesNotMatch(text, /skills\/[a-z-]+\/SKILL.md/);
+  assert.ok(fs.existsSync(path.join(output, 'skills/workflow-spec/references/workflows/incremental-implementation/SKILL.txt')));
+});
+test('overridden shared sources require review when upstream content changes', t => {
+  const fixture = sourceFixture(t);
+  fs.appendFileSync(path.join(fixture, 'references/orchestration-patterns.md'), '\nNew upstream rule.\n');
+  assert.throws(() => build({ root: fixture, output: path.join(fixture, 'dist/codex') }), /review|digest/i);
+});
+test('rejects LICENSE symlinks before copying content into releases', t => {
+  const fixture = sourceFixture(t);
+  fs.rmSync(path.join(fixture, 'LICENSE'));
+  const secret = path.join(temporary(t), 'synthetic-private.txt');
+  fs.writeFileSync(secret, 'synthetic private material');
+  fs.symlinkSync(secret, path.join(fixture, 'LICENSE'));
+  assert.throws(() => build({ root: fixture, output: path.join(fixture, 'dist/codex') }), /regular|symlink/i);
+});
+test('refuses an output ancestor symlink aliasing protected source directories', t => {
+  const fixture = sourceFixture(t);
+  const marker = path.join(fixture, 'skills/_codex-build.json');
+  fs.writeFileSync(marker, '{}');
+  fs.symlinkSync(fixture, path.join(fixture, 'dist'), 'junction');
+  assert.throws(() => build({ root: fixture, output: path.join(fixture, 'dist/skills') }), /unsafe|output|symlink/i);
+  assert.ok(fs.existsSync(path.join(fixture, 'skills/interview-me/SKILL.md')));
+});
+test('a final publication rename failure restores the preceding distribution', t => {
+  const output = temporary(t);
+  build({ root, output });
+  const before = tree(output);
+  const rename = fs.renameSync;
+  fs.renameSync = (source, destination) => {
+    if (path.basename(source).startsWith('.codex-stage-') && !path.basename(source).endsWith('-previous') && destination === fs.realpathSync(path.dirname(output)) + path.sep + path.basename(output)) throw new Error('synthetic publication failure');
+    return rename(source, destination);
+  };
+  try { assert.throws(() => build({ root, output }), /synthetic publication failure/); }
+  finally { fs.renameSync = rename; }
   assert.deepEqual(tree(output), before);
 });
